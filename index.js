@@ -1,54 +1,125 @@
 const TelegramApi = require('node-telegram-bot-api');
+const { options } = require('nodemon/lib/config');
 
-const token = '5240333795:AAHVNuVL39AtP354tNpJ3ur1WfCujACX7Ck';
+require('dotenv').config();
+
+const sequelize = require('./db.js');
+const OrderModel = require('./models.js');
+
+const token = process.env.TOKEN_API;
 
 const bot = new TelegramApi(token, {polling: true});
 
-const options = require('./options.js');
-
-const botButtons = {
+const startButtons = {
     reply_markup: JSON.stringify({
         inline_keyboard: [
-            [{text: 'Поделиться книгами', callback_data: '1'}],
-            [{text: 'Взглянуть на предложения', callback_data: '2'}],
-            [{text: 'Изменить твои предложения', callback_data: '3'}]
+            [{text: 'Поделиться книгами', callback_data: 'share'}],
+            [{text: 'Взглянуть на все предложения', callback_data: 'lookup'}],
+            [{text: 'Удалить мое предложение', callback_data: 'delete'}]
         ]
     })
 }
 
+const start = async () => {
 
+    try {
+        await sequelize.authenticate()
+        await sequelize.sync()
+    } catch (error) {
+        console.log('Подключение к БД умерло', error)
+    }
 
-const start = () => {
     bot.setMyCommands([
         {command: '/start', description: 'Начать работу с ботом!'},
-        {command: '/info', description: 'Получить информацию о работе с ботом!'},
-        {command: '/share', description: 'Поделиться с ботом книгами, которые хочешь зашерить!'}])
+        {command: '/info', description: 'Получить информацию о работе с ботом!'}])
     
-    bot.on('message', msg => {
+    bot.on('message', async msg => {
         console.log(msg)
         const text = msg.text;
         const chatId = msg.chat.id;
-    
-        if(text === '/start') {
-            return bot.sendMessage(chatId, 'Выбери дальнейшее действие!', botButtons)
+        const username = msg.chat.username;
+
+        try {
+            if(text === '/start') {
+                return bot.sendMessage(chatId, 'Привет! Это бот для обмена книгами в Каше, выбери дальнейшее действие!', startButtons)
+            }
+        
+            if(text === '/info') {
+                bot.sendMessage(chatId, 'Это бот для обмена книгами между жителями Каша. Ты можешь загрузить фотографию книг, которыми готов поделиться на время. В ответ бот позволяет выбрать интересные тебе книги из уже существующих объявлений и связаться с их владельцем чтобы взять себе одну или несколько на время! По всем вопросам - @protivsporta');
+                return bot.sendSticker(chatId, 'https://cdn.tlgrm.app/stickers/f65/1a8/f651a8b9-647b-3249-848c-152033492f63/192/5.webp');
+            } 
+
+            if(msg.photo) {
+                const newItem = OrderModel.create({
+                    chatID: chatId,
+                    messageText: text,
+                    messageId: msg.message_id,
+                    username: msg.from.username,
+                    photoId: msg.photo[0].file_id
+                })
+                return bot.sendMessage(chatId, 'Принял фотографию книг!')
+
+            }
+
+            if(isNumeric(text)) {
+                let numberOfOrder = Number(text) - 1;
+                const messages = await OrderModel.findAll({ where: { username: username }});
+                const currentMessage = messages[numberOfOrder];
+                if(currentMessage) {
+                    await currentMessage.destroy();
+                } else {
+                    return bot.sendMessage(chatId, 'Введите существующий номер предложения!')
+                }
+                return bot.sendMessage(chatId, 'Предложение удалено!')
+            }
+            
+            bot.sendMessage(chatId, "Бот тебя не понимает, попробуй воспользоваться меню команд!");
+            return bot.sendSticker(chatId, 'https://cdn.tlgrm.app/stickers/45c/48e/45c48e77-b672-348e-a79a-bc4aae8a344a/192/5.webp');
+            
+        } catch (error) {
+            return bot.sendMessage(chatId, 'Произошла ошибка логики чата!')
         }
     
-        if(text === '/info') {
-            return bot.sendMessage(chatId, 'Для получения дополнительной информации нужно пукнуть в воду')
-        } 
-        
-        return bot.sendMessage(chatId, "Бот тебя не понимает, попробуй воспользоваться меню команд")
     })
 
-    bot.on('callback_query', msg => {
+    bot.on('callback_query', async msg => {
         console.log(msg);
         const data = msg.data;
         const chatId = msg.message.chat.id;
-        if(data === '1') {
-            bot.sendMessage(chatId, "Отправь фото книг или список в текстовом формате")
+        const username = msg.message.chat.username;
+        if(data === 'share') {
+            return bot.sendMessage(chatId, "Отправь фотографию книг, которыми хочешь поделиться!")
+        }
+
+        if(data === 'lookup') {
+            const messages = await OrderModel.findAll();
+            if(messages.length > 0) {
+                for(let i = 0; i < messages.length; i++) {
+                    return await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Владелец - @${messages[i].username}`});
+                }
+            } else {
+                return bot.sendMessage(chatId, 'Нет доступных предложений!')
+            }
+        }
+
+        if(data === 'delete') {
+            const messages = await OrderModel.findAll({ where: { username: username }});
+            if(messages.length > 0) {
+                for(let i = 0; i < messages.length; i++) {
+                    let j = i + 1;
+                    await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Предложение #${j}`});
+                }
+                return bot.sendMessage(chatId, 'Введи номер предложения, которое хочешь удалить');
+
+            } else {
+                return bot.sendMessage(chatId, "У тебя нет доступных для удаления предложений!")
+            }
         }
     })
 }
 
 start();
 
+function isNumeric(value) {
+    return /^-?\d+$/.test(value);
+}
