@@ -88,18 +88,19 @@ const start = async () => {
         const chatId = msg.message.chat.id;
         const username = msg.message.chat.username;
         if(data === 'share') {
-            return bot.sendMessage(chatId, "Отправь фотографию книг, которыми хочешь поделиться!")
+            return bot.sendMessage(chatId, "Отправь фотографию книги, которой хочешь поделиться!")
         }
 
         if(data === 'lookup') {
             const messages = await OrderModel.findAll();
             if(messages.length > 0) {
                 for(let i = 0; i < messages.length; i++) {
-                    return await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Владелец - @${messages[i].username}`});
+                    await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Владелец - @${messages[i].username}`});
                 }
             } else {
                 return bot.sendMessage(chatId, 'Нет доступных предложений!')
             }
+            return;
         }
 
         if(data === 'delete') {
