@@ -20,13 +20,6 @@ const startButtons = {
     })
 }
 
-const bookList = {
-    reply_markup: {
-        inline_keyboard: [
-        ]
-    }
-}
-
 const start = async () => {
     try {
         await sequelize.authenticate()
@@ -48,6 +41,8 @@ const start = async () => {
 
         try {
             if(text === '/start') {
+                const messages = await OrderModel.findAll();
+                console.log(messages);
                 return bot.sendMessage(chatId, 'Привет! Это бот для обмена книгами в Каше, выбери дальнейшее действие!', startButtons)
             }
         
@@ -67,7 +62,6 @@ const start = async () => {
             }
 
             if(text.includes('-')) {
-                // здесь достаем строки из базы по чаи айди и последнюю обновляем
                 const lastOrder = await OrderModel.findOne({ where: { chatID: chatId }, order: [['createdAt', 'DESC']]});
                 await lastOrder.update({ messageText: text});
                 return bot.sendMessage(chatId, "Принял описание книги!");
@@ -105,6 +99,11 @@ const start = async () => {
 
         if(data === 'lookup') {
             const messages = await OrderModel.findAll();
+            const bookList = {
+                reply_markup: {
+                    inline_keyboard: []
+                }
+            }
             if(messages.length > 0) {
                 for(let i = 0; i < messages.length; i++) {
                     if(messages[i].messageText) {
@@ -113,9 +112,9 @@ const start = async () => {
                         console.log("Ошибка логики списка книг");
                     }
                 }
-                return bot.sendMessage(chatId, "Выберите книгу из списка!", bookList);
+                bot.sendMessage(chatId, "Выберите книгу из списка!", bookList);
             } else {
-                return bot.sendMessage(chatId, 'Нет доступных предложений!')
+                bot.sendMessage(chatId, 'Нет доступных предложений!');
             }
         }
 
