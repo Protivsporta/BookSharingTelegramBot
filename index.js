@@ -58,13 +58,14 @@ const start = async () => {
                     username: msg.from.username,
                     photoId: msg.photo[0].file_id
                 })
-                return bot.sendMessage(chatId, "Принял фотографию книги! Отправь пожалуйста автора и название в формате 'Джэк Лондон - Мартен Иден'");
+                return bot.sendMessage(chatId, "Принял фотографию книги! Отправь автора и название в формате 'Джэк Лондон - Мартен Иден'");
             }
 
             if(text.includes('-')) {
                 const lastOrder = await OrderModel.findOne({ where: { chatID: chatId }, order: [['createdAt', 'DESC']]});
                 await lastOrder.update({ messageText: text});
-                return bot.sendMessage(chatId, "Принял описание книги!");
+                bot.sendMessage(chatId, "Принял описание книги!");
+                return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
             }
 
             if(isNumeric(text)) {
@@ -74,7 +75,7 @@ const start = async () => {
                 if(currentMessage) {
                     await currentMessage.destroy();
                 } else {
-                    return bot.sendMessage(chatId, 'Введите существующий номер предложения!')
+                    return bot.sendMessage(chatId, 'Введи существующий номер предложения!')
                 }
                 return bot.sendMessage(chatId, 'Предложение удалено!')
             }
@@ -112,7 +113,7 @@ const start = async () => {
                         console.log("Ошибка логики списка книг");
                     }
                 }
-                bot.sendMessage(chatId, "Выберите книгу из списка!", bookList);
+                bot.sendMessage(chatId, "Выбери книгу из списка!", bookList);
             } else {
                 bot.sendMessage(chatId, 'Нет доступных предложений!');
             }
@@ -120,16 +121,32 @@ const start = async () => {
 
         if(data === 'delete') {
             const messages = await OrderModel.findAll({ where: { username: username }});
+            const listForDelete = {
+                reply_markup: {
+                    inline_keyboard: []
+                }
+            }
             if(messages.length > 0) {
                 for(let i = 0; i < messages.length; i++) {
                     let j = i + 1;
                     await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Предложение #${j}`});
+                    listForDelete.reply_markup.inline_keyboard.push([{ text: String(j), callback_data: `${i} deleteItem` }]);
                 }
-                return bot.sendMessage(chatId, 'Введи номер предложения, которое хочешь удалить');
+                return bot.sendMessage(chatId, 'Выбери номер предложения, которое хочешь удалить!', listForDelete);
 
             } else {
-                return bot.sendMessage(chatId, "У тебя нет доступных для удаления предложений!")
+                return bot.sendMessage(chatId, "У тебя нет доступных для удаления предложений!");
             }
+        }
+
+        if(data.includes('deleteItem')) {
+            const numberOfElement = Number(data.charAt(0));
+            const messages = await OrderModel.findAll({ where: { username: username }});
+            const currentMessage = messages[numberOfElement];
+            await currentMessage.destroy();
+            bot.sendMessage(chatId, 'Предложение удалено!');
+            return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
+
         }
 
         if(data.includes('elementNumber')) {
