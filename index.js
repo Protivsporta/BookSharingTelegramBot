@@ -59,13 +59,18 @@ const start = async () => {
             if(msg.photo) {
                 const newItem = await OrderModel.create({
                     chatID: chatId,
-                    messageText: caption,
                     messageId: msg.message_id,
                     username: msg.from.username,
                     photoId: msg.photo[0].file_id
                 })
-                return bot.sendMessage(chatId, 'Принял фотографию книги!')
+                return bot.sendMessage(chatId, "Принял фотографию книги! Отправь пожалуйста автора и название в формате 'Джэк Лондон - Мартен Иден'");
+            }
 
+            if(text.includes('-')) {
+                // здесь достаем строки из базы по чаи айди и последнюю обновляем
+                const lastOrder = await OrderModel.findOne({ where: { chatID: chatId }, order: [['createdAt', 'DESC']]});
+                await lastOrder.update({ messageText: text});
+                return bot.sendMessage(chatId, "Принял описание книги!");
             }
 
             if(isNumeric(text)) {
@@ -95,14 +100,18 @@ const start = async () => {
         const chatId = msg.message.chat.id;
         const username = msg.message.chat.username;
         if(data === 'share') {
-            return bot.sendMessage(chatId, "Отправь фотографию и название книги, которой хочешь поделиться!")
+            return bot.sendMessage(chatId, "Отправь фотографию книги, которой хочешь поделиться!")
         }
 
         if(data === 'lookup') {
             const messages = await OrderModel.findAll();
             if(messages.length > 0) {
                 for(let i = 0; i < messages.length; i++) {
-                    bookList.reply_markup.inline_keyboard.push([{ text: messages[i].messageText, callback_data: `${i} elementNumber` }]);
+                    if(messages[i].messageText) {
+                        bookList.reply_markup.inline_keyboard.push([{ text: messages[i].messageText, callback_data: `${i} elementNumber` }]);
+                    } else {
+                        console.log("Ошибка логики списка книг");
+                    }
                 }
                 return bot.sendMessage(chatId, "Выберите книгу из списка!", bookList);
             } else {
