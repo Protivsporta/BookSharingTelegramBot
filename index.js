@@ -13,15 +13,21 @@ const bot = new TelegramApi(token, {polling: true});
 const startButtons = {
     reply_markup: JSON.stringify({
         inline_keyboard: [
-            [{text: 'Поделиться книгами', callback_data: 'share'}],
+            [{text: 'Поделиться книгой', callback_data: 'share'}],
             [{text: 'Взглянуть на все предложения', callback_data: 'lookup'}],
             [{text: 'Удалить мое предложение', callback_data: 'delete'}]
         ]
     })
 }
 
-const start = async () => {
+const bookList = {
+    reply_markup: {
+        inline_keyboard: [
+        ]
+    }
+}
 
+const start = async () => {
     try {
         await sequelize.authenticate()
         await sequelize.sync()
@@ -38,6 +44,7 @@ const start = async () => {
         const text = msg.text;
         const chatId = msg.chat.id;
         const username = msg.chat.username;
+        const caption = msg.caption;
 
         try {
             if(text === '/start') {
@@ -50,14 +57,14 @@ const start = async () => {
             } 
 
             if(msg.photo) {
-                const newItem = OrderModel.create({
+                const newItem = await OrderModel.create({
                     chatID: chatId,
-                    messageText: text,
+                    messageText: caption,
                     messageId: msg.message_id,
                     username: msg.from.username,
                     photoId: msg.photo[0].file_id
                 })
-                return bot.sendMessage(chatId, 'Принял фотографию книг!')
+                return bot.sendMessage(chatId, 'Принял фотографию книги!')
 
             }
 
@@ -88,19 +95,19 @@ const start = async () => {
         const chatId = msg.message.chat.id;
         const username = msg.message.chat.username;
         if(data === 'share') {
-            return bot.sendMessage(chatId, "Отправь фотографию книги, которой хочешь поделиться!")
+            return bot.sendMessage(chatId, "Отправь фотографию и название книги, которой хочешь поделиться!")
         }
 
         if(data === 'lookup') {
             const messages = await OrderModel.findAll();
             if(messages.length > 0) {
                 for(let i = 0; i < messages.length; i++) {
-                    await bot.sendPhoto(chatId, messages[i].photoId, {caption: `Владелец - @${messages[i].username}`});
+                    bookList.reply_markup.inline_keyboard.push([{ text: messages[i].messageText, callback_data: `${i} elementNumber` }]);
                 }
+                return bot.sendMessage(chatId, "Выберите книгу из списка!", bookList);
             } else {
                 return bot.sendMessage(chatId, 'Нет доступных предложений!')
             }
-            return;
         }
 
         if(data === 'delete') {
@@ -116,6 +123,12 @@ const start = async () => {
                 return bot.sendMessage(chatId, "У тебя нет доступных для удаления предложений!")
             }
         }
+
+        if(data.includes('elementNumber')) {
+            const numberOfElement = Number(data.charAt(0));
+            const messages = await OrderModel.findAll();
+            await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username}`});
+        }
     })
 }
 
@@ -123,4 +136,4 @@ start();
 
 function isNumeric(value) {
     return /^-?\d+$/.test(value);
-}
+} 
