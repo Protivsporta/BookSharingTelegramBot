@@ -89,6 +89,8 @@ const start = async () => {
     
     })
 
+    // Ниже обработка колбэков
+    
     bot.on('callback_query', async msg => {
         console.log(msg);
         const data = msg.data;
@@ -153,6 +155,7 @@ const start = async () => {
             const numberOfElement = Number(data.charAt(0));
             const messages = await OrderModel.findAll();
             await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username}`});
+            return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
         }
     })
 }
