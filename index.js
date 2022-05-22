@@ -154,7 +154,7 @@ const start = async () => {
         if(data.includes('elementNumber')) {
             const numberOfElement = Number(data.charAt(0));
             const messages = await OrderModel.findAll();
-            await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username} \nНапиши ему чтобы забрать книжку!`});
+            await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username} \nНапиши владельцу чтобы забрать книжку!`});
             return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
         }
     })
