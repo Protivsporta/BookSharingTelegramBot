@@ -82,7 +82,7 @@ const start = async () => {
             
             bot.sendMessage(chatId, "Бот тебя не понимает, попробуй воспользоваться меню команд!");
             return bot.sendSticker(chatId, 'https://cdn.tlgrm.app/stickers/45c/48e/45c48e77-b672-348e-a79a-bc4aae8a344a/192/5.webp');
-            
+
         } catch (error) {
             return bot.sendMessage(chatId, 'Произошла ошибка логики чата!')
         }
@@ -154,7 +154,7 @@ const start = async () => {
         if(data.includes('elementNumber')) {
             const numberOfElement = Number(data.charAt(0));
             const messages = await OrderModel.findAll();
-            await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username}`});
+            await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username} \nНапиши ему чтобы забрать книжку!`});
             return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
         }
     })
