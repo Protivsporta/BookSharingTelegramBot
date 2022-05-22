@@ -102,6 +102,7 @@ const start = async () => {
 
         if(data === 'lookup') {
             const messages = await OrderModel.findAll();
+            console.log(messages);
             const bookList = {
                 reply_markup: {
                     inline_keyboard: []
@@ -152,7 +153,8 @@ const start = async () => {
         }
 
         if(data.includes('elementNumber')) {
-            const numberOfElement = Number(data.charAt(0));
+            const dataArray = data.split(' ')
+            const numberOfElement = Number(dataArray[0]);
             const messages = await OrderModel.findAll();
             await bot.sendPhoto(chatId, messages[numberOfElement].photoId, {caption: `Владелец - @${messages[numberOfElement].username} \nНапиши владельцу чтобы забрать книжку!`});
             return bot.sendMessage(chatId, "Выбери дальнейшее действие!", startButtons);
